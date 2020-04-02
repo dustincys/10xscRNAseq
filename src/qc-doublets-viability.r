@@ -13,6 +13,7 @@ library(Seurat)
 library(ggplot2)
 library(ggpubr)
 library(rjson)
+library(rlist)
 library(dplyr)})
 print('----QC----')
 option_list = list(
@@ -53,23 +54,23 @@ gpdat = tidyr::gather(data.frame(rname = rownames(combined.data@meta.data),
                       value = value, -rname,-orig.ident)
 plot.pmito = ggplot(data = filter(gpdat,type == 'percent.mito'),
                     aes(x = orig.ident,y=value))
-plot.pmito = plot.pmito + geom_boxplot(aes(color = 'pink'),outlier.shape = NA) +
-    ylab('') +
-    xlab('')  +
+plot.pmito = plot.pmito + geom_boxplot(aes(color = 'pink'),outlier.shape = 1, outlier.color = "pink") +
+    xlab('orig.ident') +
+    ylab('percent.mito')  +
     theme(axis.text.x = element_text(angle = 40,hjust = 1, vjust = 1),
           legend.position = 'none')
 plot.nF = ggplot(data = filter(gpdat,type == 'nFeature_RNA'),
                     aes(x = orig.ident,y=value))
-plot.nF = plot.nF + geom_boxplot(aes(color = 'pink'),outlier.shape = NA) +
-    ylab('') +
-    xlab('')  +
+plot.nF = plot.nF + geom_boxplot(aes(color = 'pink'),outlier.shape = 1, outlier.color = "pink") +
+    ylab('nFeature_RNA') +
+    xlab('orig.ident')  +
     theme(axis.text.x = element_text(angle = 40,hjust = 1, vjust = 1),
           legend.position = 'none')
 plot.nRead = ggplot(data = filter(gpdat,type == 'nCount_RNA'),
                     aes(x = orig.ident,y=value))
-plot.nRead = plot.nRead + geom_boxplot(aes(color = 'pink'),outlier.shape = NA) +
-    ylab('') +
-    xlab('')  +
+plot.nRead = plot.nRead + geom_boxplot(aes(color = 'pink'),outlier.shape = 1, outlier.color = "pink") +
+    ylab('nCount_RNA') +
+    xlab('orig.ident')  +
     theme(axis.text.x = element_text(angle = 40,hjust = 1, vjust = 1),
           legend.position = 'none')
 plot.viability = FeatureScatter(object = combined.data,
@@ -78,11 +79,23 @@ plot.viability = FeatureScatter(object = combined.data,
 plot.doublets = FeatureScatter(object = combined.data,
                                feature1 = "nCount_RNA",
                                feature2 = "nFeature_RNA")
+
+
 gp.list = list(plot.nF,
                plot.nRead,
                plot.pmito,
                plot.viability,
                plot.doublets)
+
+
+df = combined.data@meta.data
+for (sample in unique(df$orig.ident)) {
+    pmv <- ggplot(data = df[df$orig.ident == sample,]) + geom_point(aes(x = nCount_RNA, y = percent.mito)) + ggtitle(sample)
+    pmd  = ggplot(data = df[df$orig.ident == sample,]) + geom_point(aes(x = nFeature_RNA, y = percent.mito)) + ggtitle(sample)
+    pmdcf  = ggplot(data = df[df$orig.ident == sample,]) + geom_point(aes(y = nFeature_RNA, x = nCount_RNA)) + ggtitle(sample)
+    gp.list = list.append(gp.list, pmv, pmd, pmdcf)
+}
+
 do.call(ggarrange, c(gp.list, ncol = 1, nrow = 1)) -> combined.gp
 pdf(opt$out)
 print(combined.gp,height = param$height,
